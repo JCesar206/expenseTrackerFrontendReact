@@ -1,76 +1,165 @@
-import { ArrowDownCircle, ArrowUpCircle, Wallet, ArrowRight } from "lucide-react";
+import { useEffect, useState } from "react";
+import {
+  ArrowDownCircle,
+  ArrowUpCircle,
+  Wallet,
+  ArrowRight,
+} from "lucide-react";
 import { Link } from "react-router";
+
 import { useApp } from "../context/AppContext";
+import api from "../services/api";
 
 function Dashboard() {
-  const { t } = useApp();
+  const { t, language } = useApp();
+
+  const [financialSummary, setFinancialSummary] = useState(null);
+  const [transactions, setTransactions] = useState([]);
+  const [categories, setCategories] = useState([]);
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingTransactions, setIsLoadingTransactions] = useState(true);
+
+  const [summaryError, setSummaryError] = useState(false);
+  const [transactionsError, setTransactionsError] = useState(false);
+
+  // Consultar el resumen financiero.
+  useEffect(() => {
+    const fetchSummary = async () => {
+      try {
+        setIsLoading(true);
+        setSummaryError(false);
+
+        const response = await api.get("/reports/summary");
+
+        setFinancialSummary(response.data);
+      } catch (error) {
+        console.error("Error loading financial summary:", error);
+        setSummaryError(true);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchSummary();
+  }, []);
+
+  // Consultar las transacciones recientes y las categorías.
+  useEffect(() => {
+    const fetchRecentTransactions = async () => {
+      try {
+        setIsLoadingTransactions(true);
+        setTransactionsError(false);
+
+        const [transactionsResponse, categoriesResponse] =
+          await Promise.all([
+            api.get("/transactions", {
+              params: {
+                limit: 5,
+                offset: 0,
+              },
+            }),
+            api.get("/categories"),
+          ]);
+
+        setTransactions(transactionsResponse.data);
+        setCategories(categoriesResponse.data);
+      } catch (error) {
+        console.error("Error loading recent transactions:", error);
+        setTransactionsError(true);
+      } finally {
+        setIsLoadingTransactions(false);
+      }
+    };
+
+    fetchRecentTransactions();
+  }, []);
+
+  // Formatear cantidades monetarias.
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat(
+      language === "es" ? "es-MX" : "en-US",
+      {
+        style: "currency",
+        currency: "USD",
+      }
+    ).format(Number(amount ?? 0));
+  };
+
+  // Formatear fechas.
+  const formatDate = (date) => {
+    return new Intl.DateTimeFormat(
+      language === "es" ? "es-MX" : "en-US",
+      {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      }
+    ).format(new Date(date));
+  };
+
+  // Relacionar el category_id con el nombre de la categoría.
+  const getCategoryName = (categoryId) => {
+    const category = categories.find(
+      (item) => item.id === categoryId
+    );
+
+    return (
+      category?.name ??
+      (language === "es" ? "Sin categoría" : "Uncategorized")
+    );
+  };
 
   const summary = [
     {
       title: t("totalIncome"),
-      amount: "$25,000.00",
+      amount: financialSummary?.income,
       icon: ArrowUpCircle,
       color: "text-emerald-600",
       background: "bg-emerald-100 dark:bg-emerald-950",
     },
     {
       title: t("totalExpenses"),
-      amount: "$3,500.00",
+      amount: financialSummary?.expenses,
       icon: ArrowDownCircle,
       color: "text-red-500",
       background: "bg-red-100 dark:bg-red-950",
     },
     {
       title: t("currentBalance"),
-      amount: "$21,500.00",
+      amount: financialSummary?.balance,
       icon: Wallet,
       color: "text-blue-600",
       background: "bg-blue-100 dark:bg-blue-950",
     },
   ];
 
-  const transactions = [
-    {
-      description: "Monthly salary",
-      category: "Salary",
-      date: "Oct 28, 2026",
-      amount: "+$25,000.00",
-      kind: "income",
-    },
-    {
-      description: "Supermarket",
-      category: "Food",
-      date: "Oct 27, 2026",
-      amount: "-$2,500.00",
-      kind: "expense",
-    },
-    {
-      description: "Transportation",
-      category: "Transport",
-      date: "Oct 26, 2026",
-      amount: "-$1,000.00",
-      kind: "expense",
-    },
-  ];
-
   return (
     <div>
-      <div className="mb-8 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold sm:text-3xl">
-            {t("overview")}
-          </h1>
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold sm:text-3xl">
+          {t("overview")}
+        </h1>
 
-          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-            {t("thisMonth")}
-          </p>
-        </div>
-
-        <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-300">
-          {t("sampleData")}
-        </span>
+        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+          {language === "es"
+            ? "Resumen de toda tu actividad financiera"
+            : "Overview of all your financial activity"}
+        </p>
       </div>
 
+      {summaryError && (
+        <div
+          role="alert"
+          className="mb-5 rounded-lg bg-red-100 p-4 text-sm text-red-700 dark:bg-red-950 dark:text-red-300"
+        >
+          {language === "es"
+            ? "No se pudo cargar el resumen financiero."
+            : "Could not load the financial summary."}
+        </div>
+      )}
+
+      {/* Financial summary */}
       <section className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
         {summary.map((item) => {
           const Icon = item.icon;
@@ -91,13 +180,18 @@ function Dashboard() {
               </div>
 
               <p className="mt-5 text-2xl font-bold">
-                {item.amount}
+                {isLoading
+                  ? "..."
+                  : summaryError
+                    ? "—"
+                    : formatCurrency(item.amount)}
               </p>
             </article>
           );
         })}
       </section>
 
+      {/* Recent transactions */}
       <section className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="mb-6 flex items-center justify-between gap-3">
           <h2 className="text-lg font-semibold">
@@ -113,34 +207,62 @@ function Dashboard() {
           </Link>
         </div>
 
-        <div className="space-y-5">
-          {transactions.map((transaction, index) => (
-            <div
-              key={index}
-              className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4 last:border-0 last:pb-0 dark:border-slate-800"
-            >
-              <div>
-                <p className="font-medium">
-                  {transaction.description}
-                </p>
+        {isLoadingTransactions ? (
+          <p className="py-6 text-center text-sm text-slate-500 dark:text-slate-400">
+            {language === "es" ? "Cargando transacciones..." : "Loading transactions..."}
+          </p>
+        ) : transactionsError ? (
+          <p
+            role="alert"
+            className="py-6 text-center text-sm text-red-600 dark:text-red-400"
+          >
+            {language === "es"
+              ? "No se pudieron cargar las transacciones."
+              : "Could not load transactions."}
+          </p>
+        ) : transactions.length === 0 ? (
+          <p className="py-6 text-center text-sm text-slate-500 dark:text-slate-400">
+            {language === "es"
+              ? "Todavía no tienes transacciones registradas."
+              : "You don't have any transactions yet."}
+          </p>
+        ) : (
+          <div className="space-y-5">
+            {transactions.map((transaction) => {
+              const isIncome = transaction.kind === "income";
 
-                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  {transaction.category} · {transaction.date}
-                </p>
-              </div>
+              return (
+                <div
+                  key={transaction.id}
+                  className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4 last:border-0 last:pb-0 dark:border-slate-800"
+                >
+                  <div>
+                    <p className="font-medium">
+                      {transaction.description}
+                    </p>
 
-              <p
-                className={`font-semibold ${
-                  transaction.kind === "income"
-                    ? "text-emerald-600"
-                    : "text-red-500"
-                }`}
-              >
-                {transaction.amount}
-              </p>
-            </div>
-          ))}
-        </div>
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                      {getCategoryName(transaction.category_id)}
+                      {" · "}
+                      {formatDate(transaction.transaction_date)}
+                    </p>
+                  </div>
+
+                  <p
+                    className={`font-semibold ${
+                      isIncome
+                        ? "text-emerald-600"
+                        : "text-red-500"
+                    }`}
+                  >
+                    {isIncome ? "+" : "-"}
+                    {formatCurrency(transaction.amount)}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </section>
     </div>
   );

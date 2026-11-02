@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Eye, EyeOff, Languages, Moon, SectionIcon, Sun, Wallet } from "lucide-react";
+import { Eye, EyeOff, Languages, Moon, Sun, Wallet } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { useApp } from "../context/AppContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -34,7 +34,7 @@ function AuthPage({ mode }) {
 	};
 
 	const handleSubmit = async (event) => {
-		event-preventDefault();
+		event.preventDefault();
 		setError("");
 
 		if (!email.trim() || !password) {
@@ -141,7 +141,7 @@ function AuthPage({ mode }) {
 
 						<div>
 							<label className="mb-2 block text-sm font-medium">{t("password")}</label>
-							<	div className="flex rounded-lg border border-slate-300 focus-within:border-blue-500 dark:border-slate-700">
+							<div className="flex rounded-lg border border-slate-300 focus-within:border-blue-500 dark:border-slate-700">
 								<input type={showPassword ? "text" : "password"} value={password}
 									onChange={(event) => setPassword(event.target.value)}
 									autoComplete={isRegister ? "new-password" : "current-password"} required
@@ -176,7 +176,7 @@ function AuthPage({ mode }) {
 						)}
 
 						<button type="submit" disabled={loading}
-							className="w-full rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white transition hover:bg-lue-700 disabled:cursor-not-allowed disabled:opacity-60">
+							className="w-full rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60">
 								{loading ? "..." : isRegister ? t("registerButton") : t("loginButton")}
 							</button>
 					</form>
