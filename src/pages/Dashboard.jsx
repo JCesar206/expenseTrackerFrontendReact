@@ -81,7 +81,7 @@ function Dashboard() {
       language === "es" ? "es-MX" : "en-US",
       {
         style: "currency",
-        currency: "USD",
+        currency: language === "es" ? "MXN" : "USD",
       }
     ).format(Number(amount ?? 0));
   };

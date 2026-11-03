@@ -89,7 +89,7 @@ function AuthPage({ mode }) {
 				<div className="flex items-center gap-2">
 					<button
 						onClick={toggleLanguage}
-						className="rounded-lg border border-slate-300 bg-white p-2 dark:border-slate-700 dark:bg-slate-900"
+						className="rounded-lg border border-slate-300 bg-white p-2 dark:border-slate-700 dark:bg-slate-900 cursor-pointer"
 						aria-label={t("language")}
 					>
 						<Languages size={19} />
@@ -98,7 +98,7 @@ function AuthPage({ mode }) {
 
 					<button
 						onClick={toggleTheme}
-						className="rounded-lg border border-slate-300 bg-white p-2 dark:border-slate-700 dark:bg-slate-900"
+						className="rounded-lg border border-slate-300 bg-white p-2 dark:border-slate-700 dark:bg-slate-900 cursor-pointer"
 						aria-label={isDark ? t("light") : t("dark")}
 					>
 						{isDark ? <Sun size={19} /> : <Moon size={19} />}
@@ -189,6 +189,7 @@ function AuthPage({ mode }) {
 								{isRegister ? t("login") : t("createAccount")}
 							</Link>
 					</p>
+					<div className="text-center font-semibold text-xs text-gray-500">Usuario Prueba: usuario_c@test.com <br/> Contraseña: PasswordTest123</div>
 				</section>
 			</div>
 		</main>

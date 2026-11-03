@@ -1,14 +1,5 @@
-
 import { useEffect, useState } from "react";
-import {
-  ArrowDownCircle,
-  ArrowUpCircle,
-  ArrowLeftRight,
-  CalendarDays,
-  Plus,
-  X,
-  Save,
-} from "lucide-react";
+import {ArrowDownCircle, ArrowUpCircle, ArrowLeftRight, CalendarDays, Plus, X, Save, Pencil, Trash2} from "lucide-react";
 
 import { useApp } from "../context/AppContext.jsx";
 import api from "../services/api";
@@ -34,6 +25,7 @@ function Transactions() {
   const [error, setError] = useState("");
   const [formError, setFormError] = useState("");
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingId, setEditingId] = useState(null);
 
   const [formData, setFormData] = useState({
     description: "",
@@ -79,7 +71,7 @@ function Transactions() {
       language === "es" ? "es-MX" : "en-US",
       {
         style: "currency",
-        currency: "USD",
+        currency: language === "es" ? "MXN" : "USD",
       }
     ).format(Number(amount ?? 0));
   };
@@ -118,7 +110,6 @@ function Transactions() {
 
     setFormError("");
   };
-
   // Cambiar tipo de transacción.
   const handleKindChange = (kind) => {
     setFormData((current) => ({
@@ -129,17 +120,57 @@ function Transactions() {
 
     setFormError("");
   };
-
   // Abrir formulario.
   const openForm = () => {
     setFormError("");
     setIsFormOpen(true);
   };
+  // Abrir el formulario con los datos de una transacción existente.
+  const openEditForm = (transaction) => {
+    setEditingId(transaction.id);
 
+    setFormData({
+      description: transaction.description,
+      amount: String(transaction.amount),
+      kind: transaction.kind,
+      category_id: transaction.category_id
+      ? String(transaction.category_id)
+      : "",
+      transaction_date: transaction.transaction_date.slice(0, 16),
+    });
+    setFormError("");
+    setIsFormOpen(true);
+  };
+
+    const handleDelete = async (transactionId) => {
+      const confirmed = window.confirm(
+        language === "es"
+          ? "¿Estás seguro de que deseas eliminar esta transacción?"
+          : "Are you sure you want to delete this transaction?"
+      );
+      if (!confirmed) return;
+      try {
+        await api.delete(`/transactions/${transactionId}`);
+        setTransactions((current) => 
+          current.filter(
+            (transaction) => transaction.id !== transactionId
+          )
+        );
+      } catch (err) {
+        console.error("Error deleting transaction:", err);
+        alert(
+          language === "es"
+          ? "No se pudo eliminar la transacción."
+          : "Could not delete the transaction."
+        );
+      }
+    };
+  
   // Cerrar y limpiar formulario.
   const closeForm = () => {
     setIsFormOpen(false);
     setFormError("");
+    setEditingId(null);
 
     setFormData({
       description: "",
@@ -206,13 +237,25 @@ function Transactions() {
         transaction_date: `${formData.transaction_date}:00`,
       };
 
-      const response = await api.post("/transactions", payload);
-
-      // Añadir el nuevo movimiento al principio del historial.
-      setTransactions((current) => [
-        response.data,
-        ...current,
-      ]);
+      let response;
+      if (editingId !== null) {
+        // Actualizar una transacción existente.
+        response = await api.put(`/transactions/${editingId}`, payload);
+        setTransactions((current) =>
+          current.map((transaction) =>
+            transaction.id === editingId
+            ? response.data
+            : transaction
+          )
+        );
+      } else {
+        // Crear una nueva transacción.
+        response = await api.post("/transactions", payload);
+        setTransactions((current) => [
+          response.data,
+          ...current,
+        ]);
+      }
 
       closeForm();
     } catch (err) {
@@ -277,7 +320,11 @@ function Transactions() {
         <section className="mb-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <div className="mb-6 flex items-center justify-between">
             <h2 className="text-lg font-semibold">
-              {language === "es"
+              {editingId !== null
+                ? language === "es"
+                ? "Editar transacción"
+                : "Edit transaction"
+              : language === "es"
                 ? "Registrar transacción"
                 : "Create transaction"}
             </h2>
@@ -451,11 +498,15 @@ function Transactions() {
                 <Save size={18} />
                 {isSaving
                   ? language === "es"
-                    ? "Guardando..."
-                    : "Saving..."
-                  : language === "es"
-                    ? "Guardar transacción"
-                    : "Save transaction"}
+                   ? "Guardado..."
+                   : "Saving..."
+                  : editingId !== null
+                    ? language === "es"
+                      ? "Guardar cambios"
+                      : "Save changes"
+                    : language === "es"
+                      ? "Guardar transacción"
+                      : "Save transaction"}
               </button>
             </div>
           </form>
@@ -563,16 +614,47 @@ function Transactions() {
                       </div>
                     </div>
 
-                    <p
-                      className={`font-semibold ${
-                        isIncome
-                          ? "text-emerald-600"
-                          : "text-red-500"
-                      }`}
-                    >
-                      {isIncome ? "+" : "-"}
-                      {formatCurrency(transaction.amount)}
-                    </p>
+                    <div className="flex items-center gap-3">
+                      <p className={`font-semibold ${isIncome ? "text-emerald-600" : "text-red-500"}`}>
+                        {isIncome ? "+" : "-"}
+                        {formatCurrency(transaction.amount)}
+                        <button
+                          type="button"
+                          onClick={() => openEditForm(transaction)}
+                          className="rounded-lg p-2 text-slate-500 transaction hover:bg-blue-100 hover:text-blue-600 dark:hover:bg-blue-950 dark:hover:text-blue-400 cursor-pointer"
+                          aria-label={
+                            language === "es"
+                            ? "Editar transacción"
+                            : "Edit transaction"
+                          }
+                          title={
+                            language === "es"
+                            ? "Editar"
+                            : "Edit"
+                          }
+                          >
+                            <Pencil size={17} />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(transaction.id)}
+                            className="rounded-lg p-2 text-slate-500 transition hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-950 dark:hover:text-red-400 cursor-pointer"
+                            aria-label={
+                              language === "es"
+                              ? "Eliminar transacción"
+                              : "Delete transaction"
+                            }
+                            title={
+                              language === "es"
+                              ? "Eliminar"
+                              : "Delete"
+                            }
+                          >
+                            <Trash2 size={17} />
+                          </button>
+                      </p>
+                    </div>
                   </article>
                 );
               })}
